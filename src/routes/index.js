@@ -12,6 +12,5 @@ router.use("/categories", categoryroutes);
 router.use("/cart", cartroutes);
 router.use("/order", orderroutes);
 
-
 export default router;
 

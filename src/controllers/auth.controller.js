@@ -68,24 +68,31 @@ export async function resendOtp(req, res) {
 
 //login
 export async function login(req, res) {
+    console.group("Login request received");
+
     const { error } = loginSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
     const { email, password } = req.body;
+    console.log(`Attempting login for email: ${email}`);
+
     const user = await prisma.auth.findUnique({ where: { email } });
+    console.log("User:", user?.id);
 
     if (!user || !user.isVerified)
         return res.status(401).json({ error: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: "Invalid credentials" });
+    console.log("Password match status:", match);
 
+    console.log("Generating tokens for user ID:", user.id);
     const token = jwt.sign(
         { userId: user.id, role: user.role },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" }
     );
-
+    console.log("Access token generated");
     const refreshToken = jwt.sign(
         { userId: user.id, role: user.role },
         process.env.REFRESH_TOKEN_SECRET,
@@ -99,7 +106,7 @@ export async function login(req, res) {
 
     // Exclude sensitive fields before returning user
     const { password: _pwd, otp: _otp, otpExpiresAt: _otpExp, resetToken: _reset, refreshToken: _rt, ...userWithoutSensitive } = user;
-
+    console.groupEnd();
     res.json({ token, refreshToken, user: userWithoutSensitive });
 }
 
@@ -144,13 +151,16 @@ export async function updateProfile(req, res) {
 
 // FORGOT PASSWORD
 export async function forgotPassword(req, res) {
+
+    console.trace("Forgot password request received");
+    
     try {
         const { email } = req.body;
 
         if (!email) {
             return res.status(400).json({ error: "Email is required" });
         }
-
+        
         const user = await prisma.auth.findUnique({ where: { email } });
 
         if (!user) {
@@ -182,7 +192,6 @@ export async function forgotPassword(req, res) {
         });
 
         const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
         await sendResetPasswordEmail(email, resetLink);
 
         return res.json({ message: "Password reset link sent" });
@@ -325,7 +334,7 @@ export async function getAllUsers(req, res) {
         if (req.user.role !== "ADMIN") {
             return res.status(403).json({ error: "Access Denied" });
         }
-
+        console.time("getAllUsers");
         const users = await prisma.auth.findMany({
             where: { role: "USER" },
             select: {
@@ -337,7 +346,7 @@ export async function getAllUsers(req, res) {
             },
             orderBy: { createdAt: "desc" }
         });
-
+        console.timeEnd("getAllUsers");
         res.json({ success: true, users });
     } catch (err) {
         console.error("getAllUsers error:", err);
