@@ -35,7 +35,7 @@ router.put(
 );
 
 router.get("/best", getBestSellers);
-router.get("/search", authMiddleware, SearchProduct);
+router.get("/search", SearchProduct);
 router.get("/top-selling", authMiddleware, adminMiddleware, getTopSellingProducts);
 router.get("/", getAllProducts);
 router.get("/:id", getSingleProduct);
