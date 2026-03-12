@@ -15,7 +15,7 @@ app.use(
   })
 );
 
-const PORT = process.env.PORT || 3000;
+// const PORT = process.env.PORT || 3000;
 
 app.use("/api", centralRoutes);
 
@@ -24,9 +24,9 @@ async function startServer() {
     await prisma.$connect();
     console.log("Database connected successfully");
 
-    app.listen(PORT, () => {
-      console.info(`Server is running on port ${PORT}`);
-    });
+    // app.listen(PORT, () => {
+    //   console.info(`Server is running on port ${PORT}`);
+    // });
   } catch (err) {
     console.error("Database connection failed:", err);
     process.exit(1);
