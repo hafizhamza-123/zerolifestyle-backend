@@ -251,7 +251,7 @@ export async function resetPassword(req, res) {
             where: { id: user.id },
             data: {
                 password: hashedPassword,
-                resetToken: null, // invalidate token
+                resetToken: null, 
             },
         });
 
