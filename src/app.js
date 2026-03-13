@@ -20,10 +20,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/api", centralRoutes);
 
-app.get("/", (req, res) => {
-      res.json({ message: "Backend working 🚀" });
-    });
-
 async function startServer() {
   try {
     await prisma.$connect();
