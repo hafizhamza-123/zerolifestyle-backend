@@ -1,13 +1,15 @@
 {
   "name": "zero-back",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "ZeroLifestyle Backend API - Serverless on Vercel",
+  "main": "api/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node src/app.js",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "build": "prisma generate",
     "postinstall": "prisma generate",
-    "start": "node src/app.js"
+    "vercel-dev": "vercel dev"
   },
   "keywords": [],
   "author": "",
@@ -28,7 +30,8 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.11",
-    "prisma": "6.19"
+    "prisma": "6.19",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

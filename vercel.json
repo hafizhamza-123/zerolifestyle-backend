@@ -1,13 +1,20 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
   "builds": [
     {
-      "src": "src/app.js",
+      "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
           "src/**",
-          "node_modules/**"
+          "prisma/**",
+          "public/**"
+        ],
+        "excludeFiles": [
+          "node_modules/**",
+          ".git/**",
+          "dist/**"
         ]
       }
     }
@@ -15,10 +22,17 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/app.js"
+      "dest": "api/index.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30,
+      "memory": 3008
+    }
   }
 }
+
