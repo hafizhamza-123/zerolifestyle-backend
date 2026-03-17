@@ -116,11 +116,53 @@ export async function updateProfile(req, res) {
         const userId = req.user.userId;
         const { name, email, password } = req.body;
 
+        const existingUser = await prisma.auth.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true }
+        });
+
+        if (!existingUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
         const data = {};
 
-        if (name) data.name = name;
-        if (email) data.email = email;
-        if (password) data.password = await bcrypt.hash(password, 10);
+        if (name !== undefined) {
+            const trimmedName = String(name).trim();
+            if (!trimmedName || trimmedName.length < 3) {
+                return res.status(400).json({ error: "Name must be at least 3 characters" });
+            }
+            data.name = trimmedName;
+        }
+
+        if (email !== undefined) {
+            const normalizedEmail = String(email).trim().toLowerCase();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+                return res.status(400).json({ error: "Invalid email format" });
+            }
+
+            if (normalizedEmail !== existingUser.email) {
+                const emailInUse = await prisma.auth.findUnique({
+                    where: { email: normalizedEmail },
+                    select: { id: true }
+                });
+
+                if (emailInUse) {
+                    return res.status(409).json({ error: "Email already exists" });
+                }
+            }
+
+            data.email = normalizedEmail;
+        }
+
+        if (password !== undefined) {
+            if (String(password).length < 6) {
+                return res.status(400).json({ error: "Password must be at least 6 characters" });
+            }
+            data.password = await bcrypt.hash(String(password), 10);
+        }
 
         if (Object.keys(data).length === 0) {
             return res.status(400).json({ error: "Nothing to update" });
@@ -134,17 +176,23 @@ export async function updateProfile(req, res) {
                 name: true,
                 email: true,
                 role: true,
-                isVerified: true
+                isVerified: true,
+                createdAt: true,
+                updatedAt: true
             }
         });
 
         return res.json({
+            success: true,
             message: "Profile updated successfully",
             user: updatedUser
         });
 
     } catch (err) {
-        console.error(err);
+        if (err?.code === "P2002") {
+            return res.status(409).json({ error: "Email already exists" });
+        }
+        console.error("updateProfile error:", err);
         return res.status(500).json({ error: "Server error" });
     }
 }
