@@ -386,7 +386,8 @@ export async function getSingleUser(req, res) {
 // Get Profile (Protected route)
 export async function getProfile(req, res) {
     try {
-        const userId = req.user.userId; 
+        const userId = req.user.userId;
+
         const user = await prisma.auth.findUnique({
             where: { id: userId },
             select: {
@@ -394,13 +395,115 @@ export async function getProfile(req, res) {
                 name: true,
                 email: true,
                 role: true,
-                createdAt: true
+                isVerified: true,
+                createdAt: true,
+                updatedAt: true
             }
-        }); 
+        });
+
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        res.json({ success: true, user });
+
+        const [
+            totalOrders,
+            activeOrders,
+            deliveredOrders,
+            cancelledOrders,
+            spending,
+            recentOrders,
+            cart
+        ] = await Promise.all([
+            prisma.order.count({ where: { userId } }),
+            prisma.order.count({
+                where: {
+                    userId,
+                    status: { in: ["PENDING", "PAID", "SHIPPED"] }
+                }
+            }),
+            prisma.order.count({ where: { userId, status: "DELIVERED" } }),
+            prisma.order.count({ where: { userId, status: "CANCELLED" } }),
+            prisma.order.aggregate({
+                where: {
+                    userId,
+                    status: { in: ["PAID", "SHIPPED", "DELIVERED"] }
+                },
+                _sum: { total: true }
+            }),
+            prisma.order.findMany({
+                where: { userId },
+                orderBy: { createdAt: "desc" },
+                take: 5,
+                select: {
+                    id: true,
+                    total: true,
+                    status: true,
+                    createdAt: true
+                }
+            }),
+            prisma.cart.findUnique({
+                where: { userId },
+                select: {
+                    items: {
+                        select: {
+                            quantity: true,
+                            price: true
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const cartItemsCount = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+        const cartSubtotal = cart?.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+        const latestOrder = recentOrders[0] || null;
+
+        const completionChecks = [
+            Boolean(user.name),
+            Boolean(user.email),
+            Boolean(user.isVerified),
+        ];
+        const profileCompletion = Math.round(
+            (completionChecks.filter(Boolean).length / completionChecks.length) * 100
+        );
+
+        return res.json({
+            success: true,
+            profileApiVersion: 2,
+            user,
+            profile: {
+                account: {
+                    id: user.id,
+                    fullName: user.name,
+                    email: user.email,
+                    role: user.role,
+                    isVerified: user.isVerified,
+                    memberSince: user.createdAt,
+                    lastUpdated: user.updatedAt,
+                    profileCompletion
+                },
+                stats: {
+                    totalOrders,
+                    activeOrders,
+                    deliveredOrders,
+                    cancelledOrders,
+                    totalSpent: spending._sum.total || 0,
+                    cartItemsCount,
+                    cartSubtotal
+                },
+                cart: {
+                    itemLines: cart?.items?.length || 0,
+                    totalItems: cartItemsCount,
+                    subtotal: cartSubtotal,
+                    hasActiveCart: cartItemsCount > 0
+                },
+                orders: {
+                    latestOrder,
+                    recentOrders
+                },
+                latestOrder
+            }
+        });
     } catch (err) {
         console.error("getProfile error:", err);
         res.status(500).json({ error: "Server error" });
